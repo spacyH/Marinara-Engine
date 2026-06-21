@@ -27,6 +27,7 @@ process.env.LOG_LEVEL ??= "silent";
 const TEST_GLOBS = [
   "src/services/llm/providers/__tests__/*.test.ts",
   "src/services/llm/providers/claude-subscription/__tests__/*.test.ts",
+  "test/*.test.ts",
 ];
 
 // Going through tsx's CLI entry and the current Node binary (rather than a

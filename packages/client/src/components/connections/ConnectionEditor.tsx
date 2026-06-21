@@ -1119,6 +1119,15 @@ export function ConnectionEditor() {
                   CLIPTextEncode node.
                 </div>
               )}
+              {selectedImageService === "http" && (
+                <div className="mt-2 rounded-lg border border-sky-400/20 bg-sky-400/5 px-3 py-2 text-[0.625rem] text-sky-300/80">
+                  <strong>Custom HTTP sidecar:</strong> Set Base URL to your sidecar&apos;s full generate endpoint
+                  (for example <code>http://127.0.0.1:3456/generate</code>). Marinara POSTs prompt, size, seed, and
+                  optional reference images, then expects <code>{`{ base64, mimeType }`}</code> or{" "}
+                  <code>{`{ url }`}</code> back. Enable <code>IMAGE_LOCAL_URLS_ENABLED=true</code> when the sidecar
+                  runs on localhost.
+                </div>
+              )}
             </FieldGroup>
           )}
 

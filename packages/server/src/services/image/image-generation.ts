@@ -119,6 +119,7 @@ const EXPLICIT_IMAGE_SOURCES = new Set([
   "automatic1111",
   "runpod_comfyui",
   "gemini_image",
+  "http",
 ]);
 
 function normalizeExplicitImageSource(serviceHint: string): string {
@@ -197,6 +198,8 @@ export async function generateImage(
       return generateAutomatic1111(normalizedBaseUrl, scopedRequest, serviceHint);
     case "gemini_image":
       return generateViaChatCompletions(normalizedBaseUrl, apiKey, scopedRequest);
+    case "http":
+      return generateHttpAdapter(normalizedBaseUrl, apiKey, scopedRequest);
     default:
       // Fallback: try OpenAI-compatible endpoint
       return generateOpenAI(normalizedBaseUrl, apiKey, scopedRequest);
@@ -221,6 +224,9 @@ export function saveImageToDisk(chatId: string, base64: string, ext: string): st
 /** Default 5-minute timeout for image generation API calls (overridable via env). */
 const IMAGE_GEN_TIMEOUT = Number(process.env.IMAGE_GEN_TIMEOUT_MS ?? 300_000);
 const MAX_IMAGE_RESPONSE_BYTES = 30 * 1024 * 1024;
+/** Custom HTTP sidecar adapters often run locally and may take several minutes. */
+const HTTP_IMAGE_GEN_TIMEOUT = Number(process.env.HTTP_IMAGE_GEN_TIMEOUT_MS ?? 120_000);
+const HTTP_IMAGE_MAX_PAYLOAD_BYTES = 10 * 1024 * 1024;
 const LOCAL_IMAGE_BACKENDS = new Set(["comfyui", "automatic1111"]);
 
 function normalizeImageUrl(url: string | URL): string {
@@ -719,6 +725,81 @@ async function generateNanoGPT(baseUrl: string, apiKey: string, request: ImageGe
   if (result?.url) return downloadImageUrl(result.url, request.allowLocalUrls);
 
   throw new Error("No image data in NanoGPT response");
+}
+
+function httpSidecarReferenceImages(request: ImageGenRequest): string[] {
+  const references = request.referenceImages?.length
+    ? request.referenceImages
+    : request.referenceImage
+      ? [request.referenceImage]
+      : [];
+  return references.map((reference) => decodeReferenceImage(reference).base64);
+}
+
+async function generateHttpAdapter(
+  baseUrl: string,
+  apiKey: string,
+  request: ImageGenRequest,
+): Promise<ImageGenResult> {
+  const body: Record<string, unknown> = {
+    prompt: request.prompt,
+    negativePrompt: request.negativePrompt ?? "",
+    width: request.width ?? 1024,
+    height: request.height ?? 1024,
+    seed: resolveSeed(request.imageDefaults),
+  };
+  if (request.model) body.model = request.model;
+
+  const referenceImages = httpSidecarReferenceImages(request);
+  if (referenceImages.length > 0) {
+    body.referenceImages = referenceImages;
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const trimmedApiKey = apiKey.trim();
+  if (trimmedApiKey) {
+    headers.Authorization = `Bearer ${trimmedApiKey}`;
+  }
+
+  const resp = await imageFetch(
+    baseUrl,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(HTTP_IMAGE_GEN_TIMEOUT),
+    },
+    { allowLocal: request.allowLocalUrls },
+  );
+
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "Unknown error");
+    throw new Error(`Custom HTTP image generation failed (${resp.status}): ${sanitizeErrorText(errText)}`);
+  }
+
+  const data = (await resp.json()) as { base64?: string; mimeType?: string; url?: string };
+  if (data.base64) {
+    const base64 = data.base64.replace(/\s+/g, "");
+    const buffer = Buffer.from(base64, "base64");
+    if (buffer.byteLength === 0) {
+      throw new Error("Custom HTTP image response contained empty base64 payload");
+    }
+    if (buffer.byteLength > HTTP_IMAGE_MAX_PAYLOAD_BYTES) {
+      throw new Error(
+        `Custom HTTP image response exceeded ${HTTP_IMAGE_MAX_PAYLOAD_BYTES} byte limit (${buffer.byteLength} bytes)`,
+      );
+    }
+    const mimeType = data.mimeType?.trim() || detectImageMimeType(base64);
+    return { base64, mimeType, ext: imageExtensionFromMimeType(mimeType) };
+  }
+
+  if (data.url) {
+    return downloadImageUrl(data.url, request.allowLocalUrls);
+  }
+
+  throw new Error("Custom HTTP image response did not include base64 or url");
 }
 
 async function generatePollinations(request: ImageGenRequest): Promise<ImageGenResult> {

@@ -512,6 +512,13 @@ export const IMAGE_GENERATION_SOURCES: ImageGenSource[] = [
     defaultBaseUrl: "https://api.blockentropy.ai",
     requiresApiKey: true,
   },
+  {
+    id: "http",
+    name: "Custom HTTP",
+    description: "User-run HTTP sidecar for web UI image generators (Playwright, etc.). POST JSON to your /generate endpoint.",
+    defaultBaseUrl: "http://127.0.0.1:3456/generate",
+    requiresApiKey: false,
+  },
 ];
 
 // Known image generation models (grouped by service)
