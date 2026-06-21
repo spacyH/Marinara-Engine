@@ -16,11 +16,14 @@ import {
   type CharacterCardFieldUpdate,
   type EditableCharacterCardField,
 } from "@marinara-engine/shared";
+import { useGalleryStore } from "../stores/gallery.store";
 
 type RetryAgentsOptions = {
   lorebookKeeperBackfill?: boolean;
   forMessageId?: string;
   secretPlotRerollMode?: "full" | "turn_only";
+  forceIllustrate?: boolean;
+  illustratingMessageId?: string;
 };
 
 type RetryAgentsFn = (chatId: string, agentTypes: string[], options?: RetryAgentsOptions) => Promise<void>;
@@ -1839,6 +1842,10 @@ export function useGenerate() {
     async (chatId: string, agentTypes: string[], options?: RetryAgentsOptions) => {
       const isActiveChat = () => useChatStore.getState().activeChatId === chatId;
       const abortController = new AbortController();
+      const illustratingMessageId = options?.illustratingMessageId;
+      if (illustratingMessageId) {
+        useGalleryStore.getState().setMessageIllustrating(illustratingMessageId, true);
+      }
       setProcessing(true);
       clearFailedAgentTypes();
       clearThoughtBubbles();
@@ -1865,6 +1872,7 @@ export function useGenerate() {
             lorebookKeeperBackfill: options?.lorebookKeeperBackfill === true,
             ...(options?.forMessageId ? { forMessageId: options.forMessageId } : {}),
             ...(options?.secretPlotRerollMode ? { secretPlotRerollMode: options.secretPlotRerollMode } : {}),
+            ...(options?.forceIllustrate ? { forceIllustrate: true } : {}),
           },
           abortController.signal,
         )) {
@@ -2047,9 +2055,11 @@ export function useGenerate() {
           }
         }
         if (!hasError) {
-          toast.success(
-            options?.lorebookKeeperBackfill ? "Lorebook Keeper backfill completed" : "Agent retry completed",
-          );
+          if (!options?.forceIllustrate) {
+            toast.success(
+              options?.lorebookKeeperBackfill ? "Lorebook Keeper backfill completed" : "Agent retry completed",
+            );
+          }
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -2061,6 +2071,9 @@ export function useGenerate() {
             : "Agent retry failed";
         showError(msg);
       } finally {
+        if (illustratingMessageId) {
+          useGalleryStore.getState().setMessageIllustrating(illustratingMessageId, false);
+        }
         setProcessing(false);
         if (shouldRefreshGameStateAfterGeneration(qc, chatId)) {
           void refreshVisibleGameStateAfterGeneration(chatId);

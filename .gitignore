@@ -1,3 +1,6 @@
+# Local git worktrees
+.worktrees/
+
 # Dependencies
 node_modules/
 .pnpm-store/

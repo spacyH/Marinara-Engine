@@ -32,6 +32,8 @@ import {
 
 import { useChatStore } from "../../stores/chat.store";
 import { useGenerate } from "../../hooks/use-generate";
+import { useAgentConfigs } from "../../hooks/use-agents";
+import { illustratorSetupHint, isIllustratorAgentEnabled } from "../../lib/illustrator-availability";
 import { spriteKeys, useCharacters, usePersonas, type SpriteInfo } from "../../hooks/use-characters";
 import { useConnections } from "../../hooks/use-connections";
 import { usePageActivity } from "../../hooks/use-page-activity";
@@ -269,6 +271,9 @@ export function ChatArea() {
   const createChat = useCreateChat();
   const branchChat = useBranchChat();
   const { generate, retryAgents } = useGenerate();
+  const { data: agentConfigs } = useAgentConfigs();
+  const illustrateMomentEnabled = isIllustratorAgentEnabled(agentConfigs);
+  const illustrateMomentTitle = illustratorSetupHint(agentConfigs);
   const setActiveSwipe = useSetActiveSwipe(activeChatId);
   const setActiveChatId = useChatStore((s) => s.setActiveChatId);
   const pendingNewChatMode = useChatStore((s) => s.pendingNewChatMode);
@@ -963,6 +968,18 @@ export function ChatArea() {
       }
     },
     [activeChatId, isStreaming, generate, currentInput, guideGenerations],
+  );
+
+  const handleIllustrateMoment = useCallback(
+    (messageId: string) => {
+      if (!activeChatId || !illustrateMomentEnabled) return;
+      void retryAgents(activeChatId, ["illustrator"], {
+        forMessageId: messageId,
+        forceIllustrate: true,
+        illustratingMessageId: messageId,
+      });
+    },
+    [activeChatId, illustrateMomentEnabled, retryAgents],
   );
 
   const _handleRetryAgents = useCallback(async () => {
@@ -1951,6 +1968,9 @@ export function ChatArea() {
             onSelectAllAboveSelection={handleSelectAllAboveSelection}
             onSelectAllBelowSelection={handleSelectAllBelowSelection}
             lastAssistantMessageId={lastAssistantMessageId}
+            onIllustrateMoment={handleIllustrateMoment}
+            illustrateMomentEnabled={illustrateMomentEnabled}
+            illustrateMomentTitle={illustrateMomentTitle}
           />
         </Suspense>
         {pendingNewChatMode && (
@@ -2052,6 +2072,9 @@ export function ChatArea() {
           onCloseFiles={() => setFilesOpen(false)}
           onCloseGallery={() => setGalleryOpen(false)}
           onIllustrate={() => retryAgents(activeChatId, ["illustrator"])}
+          onIllustrateMoment={handleIllustrateMoment}
+          illustrateMomentEnabled={illustrateMomentEnabled}
+          illustrateMomentTitle={illustrateMomentTitle}
           onWizardFinish={() => {
             setWizardOpen(false);
             setSettingsOpen(true);
