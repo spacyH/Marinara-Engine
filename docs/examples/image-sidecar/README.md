@@ -55,7 +55,12 @@ or a fetchable URL (Marinara downloads it):
 
 ## Production sidecars
 
-The included `server.js` is a **stub** that returns a placeholder PNG so you can verify wiring. Real sidecars should:
+| Sidecar | Path | Description |
+|---------|------|-------------|
+| Stub | `server.js` | Placeholder PNG — verifies Marinara HTTP wiring |
+| **Perchance** | [`perchance/`](perchance/) | Playwright driver for `marinara-t2i-host` via [`marinara-bridge`](../../../../perchance-generators/marinara-bridge/) |
+
+Real sidecars should:
 
 - Run Playwright/Puppeteer (or site-specific automation) outside Marinara core
 - Maintain selectors and login steps per target site

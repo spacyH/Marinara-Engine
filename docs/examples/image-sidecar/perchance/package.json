@@ -1,0 +1,13 @@
+{
+  "name": "marinara-perchance-image-sidecar",
+  "private": true,
+  "type": "module",
+  "description": "Playwright HTTP sidecar that drives the Perchance marinara-t2i-host via marinara.bridge",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test resolution.test.js"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}
