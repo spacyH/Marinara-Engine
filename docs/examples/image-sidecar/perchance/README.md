@@ -28,10 +28,36 @@ npx playwright install chromium
 
 ```bash
 npm start
-# or: node server.js
 ```
 
 Listens on `http://127.0.0.1:3456/generate` by default.
+
+### Perchance requires your real Chrome (not Playwright launch)
+
+`image-generation.perchance.org` runs **Cloudflare Turnstile** anti-bot checks and expects a normal browser session (plus ad-broker handshakes). Chrome launched by Playwright — even with `PLAYWRIGHT_CHANNEL=chrome` and `PLAYWRIGHT_HEADLESS=false` — is detected and shows **“Anti-bot verification failed”** in the broker iframe. There is no manual checkbox to click; launch mode will not work reliably.
+
+**Use CDP attach** so the sidecar drives *your* Chrome over the debugging protocol:
+
+**Terminal 1** — start Chrome (quit other Chrome windows first, or use a dedicated profile):
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --remote-debugging-port=9222 \
+  --user-data-dir="$HOME/.marinara-perchance-chrome"
+```
+
+In that Chrome window, open `https://perchance.org/marinara-t2i-host` and confirm **Generate locally** works once (passes Turnstile for that profile).
+
+**Terminal 2** — sidecar attaches instead of launching automation:
+
+```bash
+cd docs/examples/image-sidecar/perchance
+PLAYWRIGHT_CDP_URL=http://127.0.0.1:9222 npm start
+```
+
+Then run the curl smoke test. The sidecar opens a new tab in your Chrome; do not close Terminal 1’s browser while the sidecar runs.
+
+For manual bridge testing without the sidecar, use `bridge-console-snippet.js` in DevTools on a normal `perchance.org` tab (see `perchance-generators/marinara-bridge/AGENTS.md`).
 
 ## Marinara wiring
 
@@ -52,7 +78,12 @@ Listens on `http://127.0.0.1:3456/generate` by default.
 | `PERCHANCE_NAV_TIMEOUT_MS` | `90000` | Page navigation timeout |
 | `PERCHANCE_GUIDANCE_SCALE` | `7` | Passed to text-to-image-plugin |
 | `PERCHANCE_REFERENCE_BLUR` | `0.35` | Reference likeness (0–1, lower = stronger) |
-| `PLAYWRIGHT_HEADLESS` | `true` | Set `false` to debug visually |
+| `PLAYWRIGHT_HEADLESS` | `true` | Only applies when Playwright launches Chrome (not recommended for Perchance) |
+| `PLAYWRIGHT_CHANNEL` | — | `chrome` when launching — still blocked by Perchance Turnstile; prefer CDP |
+| `PLAYWRIGHT_CDP_URL` | — | **Recommended.** e.g. `http://127.0.0.1:9222` — attach to your own Chrome |
+| `PLAYWRIGHT_USER_DATA_DIR` | `~/.marinara-perchance-chrome` | Profile for `--user-data-dir` when starting Chrome for CDP |
+| `PLAYWRIGHT_USER_AGENT` | Chrome 131 desktop UA | Override when Perchance blocks default automation |
+| `PLAYWRIGHT_KEEP_BROWSER_ON_FAILURE` | `false` | Set `true` to leave a Playwright-launched window open after errors (debug only) |
 
 ## Request mapping
 
@@ -86,7 +117,7 @@ This avoids cross-origin iframe embedding (`X-Frame-Options: sameorigin`) by dri
 
 - **Generator must exist on Perchance** — publish `marinara-t2i-host` (imports `marinara-bridge-plugin`, `text-to-image-plugin`, `upload-plugin`) before relying on the default URL.
 - **DOM / plugin changes** break automation; maintain selectors in this sidecar, not Marinara core.
-- **ToS / captcha / auth** — your responsibility; Marinara does not bypass anti-bot.
+- **ToS / captcha / auth** — Perchance funds t2i with ads + Turnstile on `image-generation.perchance.org`. Playwright-launched browsers fail anti-bot checks; attach via `PLAYWRIGHT_CDP_URL` to a Chrome you started yourself, or use the bridge console snippet in a normal browser tab.
 - **Reference images** as raw base64 may not work for all Perchance models; upload-plugin CDN URLs are more reliable (see bridge README).
 
 ## Tests
