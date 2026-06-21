@@ -720,6 +720,9 @@ type RoleplaySurfaceProps = {
   onToggleConversationStart: (messageId: string, current: boolean) => void;
   onToggleHiddenFromAI: (messageId: string, current: boolean) => void;
   onPeekPrompt: () => void;
+  onIllustrateMoment?: (messageId: string) => void;
+  illustrateMomentEnabled?: boolean;
+  illustrateMomentTitle?: string;
   onBranch?: (messageId: string) => void;
   onCloneSceneFromHere?: (messageId: string) => void;
   isCloneSceneFromHereDisabled?: boolean;
@@ -821,6 +824,9 @@ export function ChatRoleplaySurface({
   onToggleConversationStart,
   onToggleHiddenFromAI,
   onPeekPrompt,
+  onIllustrateMoment,
+  illustrateMomentEnabled = false,
+  illustrateMomentTitle = "Illustrate moment",
   onBranch,
   onCloneSceneFromHere,
   isCloneSceneFromHereDisabled,
@@ -859,6 +865,11 @@ export function ChatRoleplaySurface({
   onSelectAllBelowSelection,
   isGrouped,
 }: RoleplaySurfaceProps) {
+  const illustrateMomentProps = {
+    onIllustrateMoment,
+    illustrateMomentEnabled,
+    illustrateMomentTitle,
+  };
   const linkedChatName = chat?.connectedChatId
     ? getConnectedChatDisplayName(allChats?.find((c) => c.id === chat.connectedChatId))
     : undefined;
@@ -1291,6 +1302,7 @@ export function ChatRoleplaySurface({
                           multiSelectMode={multiSelectMode}
                           isSelected={selectedMessageIds.has(msg.id)}
                           onToggleSelect={onToggleSelectMessage}
+                          {...illustrateMomentProps}
                         />
                       ) : (
                         <ChatMessage
@@ -1320,6 +1332,7 @@ export function ChatRoleplaySurface({
                           multiSelectMode={multiSelectMode}
                           isSelected={selectedMessageIds.has(msg.id)}
                           onToggleSelect={onToggleSelectMessage}
+                          {...illustrateMomentProps}
                         />
                       )}
                     </div>

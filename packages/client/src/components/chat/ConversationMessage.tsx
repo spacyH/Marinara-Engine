@@ -17,10 +17,13 @@ import {
   Languages,
   ChevronRight,
   EyeOff,
+  Paintbrush,
+  Loader2,
 } from "lucide-react";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import type { Message, MessageExtra } from "@marinara-engine/shared";
 import { useUIStore } from "../../stores/ui.store";
+import { useGalleryStore } from "../../stores/gallery.store";
 import { useChatStore } from "../../stores/chat.store";
 import { cn, copyToClipboard, getAvatarCropStyle, parseAvatarCropJson } from "../../lib/utils";
 import { applyInlineMarkdown, renderMarkdownBlocks } from "../../lib/markdown";
@@ -311,6 +314,9 @@ interface ConversationMessageProps {
   onSetActiveSwipe?: (messageId: string, index: number) => void;
   onToggleHiddenFromAI?: (messageId: string, current: boolean) => void;
   onPeekPrompt?: () => void;
+  onIllustrateMoment?: (messageId: string) => void;
+  illustrateMomentEnabled?: boolean;
+  illustrateMomentTitle?: string;
   isLastAssistantMessage?: boolean;
   characterMap?: CharacterMap;
   personaInfo?: PersonaInfo;
@@ -339,6 +345,9 @@ export const ConversationMessage = memo(function ConversationMessage({
   onSetActiveSwipe,
   onToggleHiddenFromAI,
   onPeekPrompt,
+  onIllustrateMoment,
+  illustrateMomentEnabled = false,
+  illustrateMomentTitle = "Illustrate moment",
   isLastAssistantMessage,
   characterMap,
   personaInfo,
@@ -386,6 +395,9 @@ export const ConversationMessage = memo(function ConversationMessage({
 
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+  const isAssistant = message.role === "assistant";
+  const isIllustratingMoment = useGalleryStore((s) => s.illustratingMessageIds.has(message.id));
+  const showIllustrateMoment = isAssistant && !!onIllustrateMoment;
 
   // Parse extra early so we can access persona snapshot
   const extra = useMemo(() => {
@@ -950,6 +962,20 @@ export const ConversationMessage = memo(function ConversationMessage({
               className={isHiddenFromAI ? "text-amber-400" : undefined}
             />
           )}
+          {showIllustrateMoment && (
+            <MsgAction
+              icon={
+                isIllustratingMoment ? (
+                  <Loader2 size="0.75rem" className="animate-spin" />
+                ) : (
+                  <Paintbrush size="0.75rem" />
+                )
+              }
+              onClick={() => onIllustrateMoment?.(message.id)}
+              title={illustrateMomentTitle}
+              disabled={!illustrateMomentEnabled || isIllustratingMoment}
+            />
+          )}
           {isLastAssistantMessage && (
             <MsgAction icon={<Search size="0.75rem" />} onClick={() => onPeekPrompt?.()} title="Peek prompt" />
           )}
@@ -1252,6 +1278,20 @@ export const ConversationMessage = memo(function ConversationMessage({
               className={isHiddenFromAI ? "text-amber-400" : undefined}
             />
           )}
+          {showIllustrateMoment && (
+            <MsgAction
+              icon={
+                isIllustratingMoment ? (
+                  <Loader2 size="0.75rem" className="animate-spin" />
+                ) : (
+                  <Paintbrush size="0.75rem" />
+                )
+              }
+              onClick={() => onIllustrateMoment?.(message.id)}
+              title={illustrateMomentTitle}
+              disabled={!illustrateMomentEnabled || isIllustratingMoment}
+            />
+          )}
           {isLastAssistantMessage && !isUser && (
             <MsgAction icon={<Search size="0.75rem" />} onClick={() => onPeekPrompt?.()} title="Peek prompt" />
           )}
@@ -1356,21 +1396,25 @@ function MsgAction({
   onClick,
   title,
   className,
+  disabled,
 }: {
   icon: React.ReactNode;
   onClick: () => void;
   title: string;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
+        if (disabled) return;
         onClick();
       }}
       title={title}
+      disabled={disabled}
       className={cn(
-        "rounded p-1 text-foreground/70 transition-colors hover:bg-foreground/20 hover:text-foreground",
+        "rounded p-1 text-foreground/70 transition-colors hover:bg-foreground/20 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}
     >

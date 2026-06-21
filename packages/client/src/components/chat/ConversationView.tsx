@@ -65,6 +65,9 @@ interface ConversationViewProps {
   onSetActiveSwipe: (messageId: string, index: number) => void;
   onToggleHiddenFromAI: (messageId: string, current: boolean) => void;
   onPeekPrompt: () => void;
+  onIllustrateMoment?: (messageId: string) => void;
+  illustrateMomentEnabled?: boolean;
+  illustrateMomentTitle?: string;
   lastAssistantMessageId: string | null;
   onOpenSettings: () => void;
   onOpenFiles: () => void;
@@ -328,6 +331,9 @@ export function ConversationView({
   onSetActiveSwipe,
   onToggleHiddenFromAI,
   onPeekPrompt,
+  onIllustrateMoment,
+  illustrateMomentEnabled = false,
+  illustrateMomentTitle = "Illustrate moment",
   lastAssistantMessageId,
   onOpenSettings,
   onOpenFiles,
@@ -358,6 +364,11 @@ export function ConversationView({
     return "Character";
   }, [characterMap, characterNames, chatCharIds, streamingCharacterId, typingCharacterName]);
   const liveTypingVerb = liveTypingName.includes(",") || liveTypingName.includes(" & ") ? "are" : "is";
+  const illustrateMomentProps = {
+    onIllustrateMoment,
+    illustrateMomentEnabled,
+    illustrateMomentTitle,
+  };
   const showTypingIndicator =
     isStreaming && !delayedCharacterInfo && (!regenerateMessageId || (!streamBuffer && !thinkingBuffer));
 
@@ -992,6 +1003,7 @@ export function ConversationView({
                   onSetActiveSwipe={onSetActiveSwipe}
                   onToggleHiddenFromAI={onToggleHiddenFromAI}
                   onPeekPrompt={onPeekPrompt}
+                  illustrateMomentProps={illustrateMomentProps}
                 />,
               );
               i = j;
@@ -1038,6 +1050,7 @@ export function ConversationView({
                 multiSelectMode={multiSelectMode}
                 isSelected={selectedMessageIds?.has(msg.id)}
                 onToggleSelect={onToggleSelectMessage}
+                {...illustrateMomentProps}
               />,
             );
             i++;
@@ -1161,6 +1174,7 @@ function SplitMessageGroup({
   onSetActiveSwipe,
   onToggleHiddenFromAI,
   onPeekPrompt,
+  illustrateMomentProps,
 }: {
   items: Array<{ key: string; msg: Message; isGrouped: boolean; index: number }>;
   isStreaming: boolean;
@@ -1177,6 +1191,11 @@ function SplitMessageGroup({
   onSetActiveSwipe: (id: string, index: number) => void;
   onToggleHiddenFromAI: (id: string, current: boolean) => void;
   onPeekPrompt: () => void;
+  illustrateMomentProps: {
+    onIllustrateMoment?: (messageId: string) => void;
+    illustrateMomentEnabled?: boolean;
+    illustrateMomentTitle?: string;
+  };
 }) {
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -1327,6 +1346,7 @@ function SplitMessageGroup({
               chatCharacterIds={chatCharacterIds}
               personaInfo={personaInfo as any}
               messageIndex={firstItem.index + 1}
+              {...illustrateMomentProps}
             />
           );
         }
@@ -1355,6 +1375,7 @@ function SplitMessageGroup({
               chatCharacterIds={chatCharacterIds}
               personaInfo={personaInfo as any}
               messageIndex={gi.index + 1}
+              {...illustrateMomentProps}
             />
           );
         });

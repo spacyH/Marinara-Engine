@@ -52,6 +52,9 @@ type ConversationSurfaceProps = {
   onSetActiveSwipe: (messageId: string, index: number) => void;
   onToggleHiddenFromAI: (messageId: string, current: boolean) => void;
   onPeekPrompt: () => void;
+  onIllustrateMoment?: (messageId: string) => void;
+  illustrateMomentEnabled?: boolean;
+  illustrateMomentTitle?: string;
   onToggleSelectMessage: (toggle: MessageSelectionToggle) => void;
   onSwitchChat?: () => void;
   onConcludeScene?: () => void;
@@ -115,6 +118,9 @@ export function ChatConversationSurface({
   onSetActiveSwipe,
   onToggleHiddenFromAI,
   onPeekPrompt,
+  onIllustrateMoment,
+  illustrateMomentEnabled,
+  illustrateMomentTitle,
   onToggleSelectMessage,
   onSwitchChat,
   onConcludeScene,
@@ -167,6 +173,9 @@ export function ChatConversationSurface({
           onSetActiveSwipe={onSetActiveSwipe}
           onToggleHiddenFromAI={onToggleHiddenFromAI}
           onPeekPrompt={onPeekPrompt}
+          onIllustrateMoment={onIllustrateMoment}
+          illustrateMomentEnabled={illustrateMomentEnabled}
+          illustrateMomentTitle={illustrateMomentTitle}
           lastAssistantMessageId={lastAssistantMessageId}
           onOpenSettings={onOpenSettings}
           onOpenFiles={onOpenFiles}

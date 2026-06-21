@@ -33,6 +33,7 @@ import {
   Play,
   ChevronRight,
   EyeOff,
+  Paintbrush,
 } from "lucide-react";
 import { formatTextQuotes, type Message, type QuoteFormat } from "@marinara-engine/shared";
 import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
@@ -44,6 +45,7 @@ import { createMessageMacroResolver } from "../../lib/chat-macros";
 import { useApplyRegex } from "../../hooks/use-apply-regex";
 import { useUIStore } from "../../stores/ui.store";
 import { useChatStore } from "../../stores/chat.store";
+import { useGalleryStore } from "../../stores/gallery.store";
 import { useTranslate } from "../../hooks/use-translate";
 import { api } from "../../lib/api-client";
 import { ttsService } from "../../lib/tts-service";
@@ -222,6 +224,9 @@ interface ChatMessageProps {
   onToggleConversationStart?: (messageId: string, current: boolean) => void;
   onToggleHiddenFromAI?: (messageId: string, current: boolean) => void;
   onPeekPrompt?: () => void;
+  onIllustrateMoment?: (messageId: string) => void;
+  illustrateMomentEnabled?: boolean;
+  illustrateMomentTitle?: string;
   onBranch?: (messageId: string) => void;
   onCloneSceneFromHere?: (messageId: string) => void;
   isCloneSceneFromHereDisabled?: boolean;
@@ -698,6 +703,9 @@ export const ChatMessage = memo(function ChatMessage({
   onToggleConversationStart,
   onToggleHiddenFromAI,
   onPeekPrompt,
+  onIllustrateMoment,
+  illustrateMomentEnabled = false,
+  illustrateMomentTitle = "Illustrate moment",
   onBranch,
   onCloneSceneFromHere,
   isCloneSceneFromHereDisabled,
@@ -719,6 +727,8 @@ export const ChatMessage = memo(function ChatMessage({
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
   const isNarrator = message.role === "narrator";
+  const isIllustratingMoment = useGalleryStore((s) => s.illustratingMessageIds.has(message.id));
+  const showIllustrateMoment = !isUser && !isSystem && !isNarrator && !!onIllustrateMoment;
   const isRoleplay = chatMode === "roleplay" || chatMode === "visual_novel";
   const {
     chatFontSize,
@@ -1945,6 +1955,21 @@ export const ChatMessage = memo(function ChatMessage({
                   dark
                 />
               )}
+              {showIllustrateMoment && (
+                <ActionBtn
+                  icon={
+                    isIllustratingMoment ? (
+                      <Loader2 size={MESSAGE_ACTION_ICON_SIZE} className="animate-spin" />
+                    ) : (
+                      <Paintbrush size={MESSAGE_ACTION_ICON_SIZE} />
+                    )
+                  }
+                  onClick={() => onIllustrateMoment?.(message.id)}
+                  title={illustrateMomentTitle}
+                  disabled={!illustrateMomentEnabled || isIllustratingMoment}
+                  dark
+                />
+              )}
               {isLastAssistantMessage && !isUser && (
                 <ActionBtn
                   icon={<Search size={MESSAGE_ACTION_ICON_SIZE} />}
@@ -2369,6 +2394,20 @@ export const ChatMessage = memo(function ChatMessage({
               title={isConversationStart ? "Remove conversation start" : "Mark as new start"}
               className={isConversationStart ? "text-amber-500" : undefined}
             />
+            {showIllustrateMoment && (
+              <ActionBtn
+                icon={
+                  isIllustratingMoment ? (
+                    <Loader2 size={MESSAGE_ACTION_ICON_SIZE} className="animate-spin" />
+                  ) : (
+                    <Paintbrush size={MESSAGE_ACTION_ICON_SIZE} />
+                  )
+                }
+                onClick={() => onIllustrateMoment?.(message.id)}
+                title={illustrateMomentTitle}
+                disabled={!illustrateMomentEnabled || isIllustratingMoment}
+              />
+            )}
             {isLastAssistantMessage && !isUser && (
               <ActionBtn
                 icon={<Search size={MESSAGE_ACTION_ICON_SIZE} />}

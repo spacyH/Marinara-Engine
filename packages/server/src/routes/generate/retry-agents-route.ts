@@ -24,6 +24,7 @@ import { buildSpotifyDjConstraints } from "../../services/spotify/spotify-dj-con
 import { resolveSpotifyCredentials } from "../../services/spotify/spotify.service.js";
 import { fingerprintChatSummary } from "../../services/prompt/chat-summary-fingerprint.js";
 import { getAssetManifest } from "../../services/game/asset-manifest.service.js";
+import { resolveRetryIllustrationIntent } from "../../services/image/illustration-intent.js";
 import { createAgentsStorage } from "../../services/storage/agents.storage.js";
 import { createCharactersStorage } from "../../services/storage/characters.storage.js";
 import { createChatsStorage } from "../../services/storage/chats.storage.js";
@@ -1349,6 +1350,7 @@ async function applyRetryResultEffects(args: {
   chars: ReturnType<typeof createCharactersStorage>;
   resolvedAgents: ResolvedRetryAgent[];
   secretPlotRerollMode?: "full" | "turn_only";
+  forceIllustrate?: boolean;
 }) {
   const {
     app,
@@ -1365,6 +1367,7 @@ async function applyRetryResultEffects(args: {
     chars,
     resolvedAgents,
     secretPlotRerollMode,
+    forceIllustrate,
   } = args;
   const sortedResults = [...results].sort(
     (a, b) => (a.type === "game_state_update" ? 0 : 1) - (b.type === "game_state_update" ? 0 : 1),
@@ -1726,13 +1729,20 @@ async function applyRetryResultEffects(args: {
         "Illustrator";
       try {
         const illData = result.data as Record<string, unknown>;
-        const shouldGenerate = illData.shouldGenerate === true;
-        const imagePrompt = ((illData.prompt as string) ?? "").trim();
+        const illustrationIntent = resolveRetryIllustrationIntent({
+          illData: {
+            shouldGenerate: illData.shouldGenerate === true,
+            prompt: typeof illData.prompt === "string" ? illData.prompt : "",
+          },
+          forceIllustrate,
+          anchorMessageContent: agentContext.mainResponse ?? undefined,
+        });
+        const imagePrompt = illustrationIntent?.prompt ?? "";
         const negativePrompt = ((illData.negativePrompt as string) ?? "").trim();
         const style = ((illData.style as string) ?? "").trim();
         const illCharacters = Array.isArray(illData.characters) ? (illData.characters as string[]) : [];
 
-        if (shouldGenerate && imagePrompt) {
+        if (illustrationIntent?.proceed && imagePrompt) {
           const illustratorAgent = resolvedAgents.find(
             (a) => a.resolved.id === result.agentId || a.resolved.type === "illustrator",
           );
@@ -2000,6 +2010,8 @@ export async function registerRetryAgentsRoute(app: FastifyInstance) {
       forMessageId?: string;
       /** Secret Plot re-run mode: full = refresh arc+turn data, turn_only = preserve arc and refresh only turn guidance. */
       secretPlotRerollMode?: "full" | "turn_only";
+      /** When true, manual illustrate requests proceed even if the Illustrator agent declines generation. */
+      forceIllustrate?: boolean;
     };
   }>("/retry-agents", async (request, reply) => {
     const {
@@ -2009,6 +2021,7 @@ export async function registerRetryAgentsRoute(app: FastifyInstance) {
       lorebookKeeperBackfill = false,
       forMessageId,
       secretPlotRerollMode = "full",
+      forceIllustrate = false,
     } = request.body;
     if (!chatId || !agentTypes?.length) {
       return reply.status(400).send({ error: "chatId and agentTypes are required" });
@@ -2250,6 +2263,7 @@ export async function registerRetryAgentsRoute(app: FastifyInstance) {
         chars,
         resolvedAgents: nonLorebookAgents,
         secretPlotRerollMode,
+        forceIllustrate,
       });
 
       sendSseEvent(reply, { type: "done", data: "" });

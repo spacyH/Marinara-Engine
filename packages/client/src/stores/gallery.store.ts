@@ -9,15 +9,19 @@ interface GalleryState {
   pinnedImages: ChatImage[];
   /** Chat IDs with an in-flight manual gallery illustration request. */
   illustratingChatIds: Set<string>;
+  /** Message IDs with an in-flight illustrate-at-anchor request. */
+  illustratingMessageIds: Set<string>;
   pinImage: (image: ChatImage) => void;
   unpinImage: (imageId: string) => void;
   clearPinned: () => void;
   setChatIllustrating: (chatId: string, illustrating: boolean) => void;
+  setMessageIllustrating: (messageId: string, illustrating: boolean) => void;
 }
 
 export const useGalleryStore = create<GalleryState>((set) => ({
   pinnedImages: [],
   illustratingChatIds: new Set(),
+  illustratingMessageIds: new Set(),
 
   pinImage: (image) =>
     set((s) => (s.pinnedImages.some((p) => p.id === image.id) ? s : { pinnedImages: [...s.pinnedImages, image] })),
@@ -32,5 +36,13 @@ export const useGalleryStore = create<GalleryState>((set) => ({
       if (illustrating) next.add(chatId);
       else next.delete(chatId);
       return { illustratingChatIds: next };
+    }),
+
+  setMessageIllustrating: (messageId, illustrating) =>
+    set((s) => {
+      const next = new Set(s.illustratingMessageIds);
+      if (illustrating) next.add(messageId);
+      else next.delete(messageId);
+      return { illustratingMessageIds: next };
     }),
 }));
